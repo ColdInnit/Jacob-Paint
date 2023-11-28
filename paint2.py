@@ -1,11 +1,14 @@
 # @formatter:off
-import math
 
 import pygame.display
+import tkinter as tk
 from pygame import *
 from math import *
+from tkinter.filedialog import asksaveasfilename, askopenfilename
 
 # initialising variables
+tkinter = tk.Tk()
+tkinter.withdraw()
 main = init()
 clock = time.Clock()
 window = display.set_mode((900, 900), RESIZABLE)
@@ -13,14 +16,18 @@ window.fill("white")
 icon = image.load("icon.png")
 display.set_icon(icon)
 display.set_caption("Jacob Paint")
-drawingSurface = Surface((836, 900))
+drawingSurface = Surface((833, 900))
 drawingSurface.fill("white")
-drawingSurface2 = Surface((836, 900))
-cursorSurface = Surface((836, 900), flags = SRCALPHA)
+cursorSurface = Surface((833, 900), flags = SRCALPHA)
 cursorSurface.fill((0,0,0,0))
-uploadSurface = Surface((836, 900))
 
-undoArray = []
+fillIcon = transform.scale(image.load("fillIcon.png"), (20,20))
+importIcon = transform.scale(image.load("importIcon.png"), (18,18))
+saveIcon = transform.scale(image.load("saveIcon.png"), (18,18))
+
+blankSurface = Surface((833, 900))
+blankSurface.fill("white")
+undoArray = [blankSurface]
 
 start = True
 drawingList = []
@@ -41,7 +48,6 @@ def drawButton(colour, coordx, coordy, radius, isHover, circleColourPicker = "gr
             
       draw.circle(window, circleColour, (coordx, coordy), radius)
       draw.circle(window, colour, (coordx, coordy), radius - 3)
-
 
 def isHover(cursorx, cursory, coordx, coordy):
       diffx = abs(cursorx - coordx)
@@ -78,20 +84,66 @@ def fill(colour, startPos):
             
             
       surfarray.blit_array(drawingSurface, surfArray)
-    
-      
+
+
 colourList = [(255,0,0),(255, 165, 0),(255,255,0),(0,255,50),(0,50,255),(255, 0, 255),(255, 192, 255),(0, 0, 0), (255, 255, 255)]
 drawColour = (0, 0, 0)
 
+prevCursorx, prevCursory = 0, 0
 
 while True:
+
+      # input checking
+      for event in pygame.event.get():
+
+            if event.type == pygame.QUIT: # close button
+                  quit()
+
+            if event.type == pygame.KEYDOWN: # fill tool hotkey
+                  if event.key == K_f:
+                        fill(drawColour, (drawingCursorx, cursory))
+                  if key.get_mods() & KMOD_CTRL == 64:
+                        if event.key == K_z:
+                              if len(undoArray) > 1:
+                                    undoArray.pop(0)
+                                    drawingSurface.fill("white")
+                                    drawingSurface.blit(undoArray[0], (0, 0))
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1: # fill tool if the button has been pressed
+                  if fillBool and cursorx > 64:
+                        fill(drawColour, (drawingCursorx, cursory))
+                        if len(undoArray) >= 20:
+                              undoArray.pop(19)
+                              undoArray.insert(0, drawingSurface.copy())
+                        else:
+                              undoArray.insert(0, drawingSurface.copy())
+                  elif isHoverVar_fill:
+                        if fillBool: fillBool = False
+                        else: fillBool = True
+                  elif isHoverVar_save:
+                        path = asksaveasfilename()
+                        if path != "":
+                              image.save(drawingSurface, path+".png")
+                              tkinter.destroy()
+                  elif isHoverVar_upload:
+                        path = askopenfilename(filetypes=[("Image Files", "*.png")])
+                        if path != "":
+                              uploadImage = image.load(path)
+                              drawingSurface.fill((0,0,0))
+                              drawingSurface.blit(uploadImage, (0,0))
+
+            if event.type == VIDEORESIZE:
+                  cursorSurface = Surface((window.get_width(), window.get_height()), flags=SRCALPHA)
+                  drawingSurface = transform.scale(drawingSurface, (event.w, event.h))
       
       window.fill("white")
-      cursorSurface.fill((0,0,0,0))
+      cursorSurface.fill((255,255,255,0))
       
-      cursorx, cursory = mouse.get_pos()# get mouse coordinates for drawing
-      drawingCursorx = cursorx - 64
-      
+      cursorx, cursory = mouse.get_pos() # get mouse coordinates for drawing
+      drawingCursorx = cursorx - 67
+
+      path = ""
+
       # drawing
       
       draw.circle(cursorSurface, drawColour, (drawingCursorx, cursory), radius)
@@ -110,23 +162,24 @@ while True:
       else:
             if not start:
                   start = True
-                  drawingSnapshot = drawingSurface
-                  if len(undoArray) >= 3:
-                        undoArray.pop(0)
-                        undoArray.append(drawingSnapshot)
+                  if len(undoArray) >= 20:
+                        undoArray.pop(19)
+                        undoArray.insert(0, drawingSurface.copy())
                   else:
-                        undoArray.append(drawingSnapshot)
+                        undoArray.insert(0, drawingSurface.copy())
       
       prevCursorx, prevCursory = drawingCursorx, cursory # storing the coords of current mouse pos for use next frame
-      
-      window.blit(drawingSurface, (64, 0)) # push drawings onto window
-      window.blit(cursorSurface, (64, 0))
-      
+
+      # window.blit(drawingSurface, (64, 0)) # push drawings onto window
+      window.blit(drawingSurface, (67, 0))
+      window.blit(cursorSurface, (67, 0))
+
+
       # UI
       
-      draw.polygon(window, "white", ((0,0), (63, 0), (63, window.get_height()), (0, window.get_height()))) # fills the UI section with white so it cant be drawn on
+      draw.polygon(window, "white", ((0,0), (63, 0), (63, 825), (0, 825))) # fills the UI section with white so it cant be drawn on
       
-      draw.line(window,"black", (64, 0), (64, window.get_height()), 5)
+      draw.line(window,"black", (64, 0), (64, 825), 5)
       draw.line(window, "black", (0, 420), (64, 420), 5)
       draw.line(window, "black", (0, 480), (64, 480), 5)
       draw.line(window, "black", (0, 720), (64, 720), 5)
@@ -156,6 +209,7 @@ while True:
       
       y += 15
       drawButton(fillButtonColour, 30, y, 17, isHoverVar_fill) # fill tool button
+      window.blit(fillIcon, (19, y-12))
       
       buttonRadius = 5
       y += 15
@@ -165,51 +219,21 @@ while True:
             drawButton("white", 30, y, buttonRadius, isHoverVar_size)
             buttonRadius += 2
             
-            if isHoverVar_size:
+            if isHoverVar_size and mouse.get_pressed(num_buttons=3)[0]:
                   radius = buttonRadius - 3
                   
       
       y+=60
       isHoverVar_save = isHover(cursorx, cursory, 30, y)
       drawButton("white", 30, y, 17, isHoverVar_save)
+      window.blit(saveIcon, (21, y-9))
       
-      y+=60
+      y+=45
       isHoverVar_upload = isHover(cursorx, cursory, 30, y)
       drawButton("white", 30, y, 17, isHoverVar_upload)
-      
-      
-      # input checking
-      for event in pygame.event.get():
-            if event.type == pygame.QUIT: # close button
-                  quit()
-            if event.type == pygame.KEYDOWN: # fill tool hotkey
-                  if event.key == K_f:
-                        fill(drawColour, (drawingCursorx, cursory))
-                  if key.get_mods() & KMOD_CTRL == 64:
-                        if event.key == K_z:
-                              if len(undoArray) > 0:
-                                    drawingSurface.fill("white")
-                                    drawingSurface.blit(drawingSnapshot, (0,0))
-                                    
-                              
-            if event.type == pygame.MOUSEBUTTONDOWN: # fill tool if the button has been pressed
-                  if fillBool and cursorx > 64:
-                        fill(drawColour, (drawingCursorx, cursory))
-                  elif isHoverVar_fill:
-                        if fillBool: fillBool = False
-                        else: fillBool = True
-                  elif isHoverVar_save:
-                        image.save(drawingSurface, "drawing.png")
-                  elif isHoverVar_upload:
-                        uploadImage = image.load("drawing.png")
-                        drawingSurface.fill((0,0,0))
-                        drawingSurface.blit(uploadImage, (0,0))
-                        
-            if event.type == VIDEORESIZE:
-                  cursorSurface = transform.scale(drawingSurface, (event.w, event.h))
-                  drawingSurface = transform.scale(drawingSurface, (event.w, event.h))
-                  
-      
-      
+      window.blit(importIcon, (20, y-10))
+
+      draw.line(window, "black", (0, 825), (64, 825), 5)
+
       display.flip()
       clock.tick(300)
